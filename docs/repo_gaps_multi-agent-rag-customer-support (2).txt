@@ -1,0 +1,155 @@
+GAP ANALYSIS: ro-anderson/multi-agent-rag-customer-support
+Reference against 2026 production agentic RAG standards
+=============================================================
+
+WHAT THE REPO ALREADY DOES WELL (baseline strengths)
+-------------------------------------------------------------
+- Supervisor / router pattern with specialized sub-agents (Flight, Car Rental,
+  Hotel, Excursion) built on LangChain + LangGraph
+- Separate services for vectorizer and chat app (Docker Compose)
+- Qdrant used as vector store
+- Safe vs. sensitive tool distinction with human-in-the-loop confirmation
+  before executing sensitive actions
+- LangSmith tracing wired in for basic observability
+- Poetry for dependency locking, Makefile for repeatable commands
+- README is honest about its own limitations and lists next steps
+
+
+1. RAG / RETRIEVAL ADVANCEMENTS
+-------------------------------------------------------------
+- No hybrid search (dense vector + BM25/keyword search combined)
+- No reranking step (e.g. cross-encoder or Cohere/Voyage rerank)
+- No query decomposition for complex/multi-part questions
+- No adaptive routing (classifier that sends simple queries down a fast
+  path and complex ones into deeper retrieval)
+- No Self-RAG (model reflecting on its own retrieval/generation quality)
+- No Corrective RAG / CRAG (re-querying when retrieved evidence is weak)
+- No GraphRAG or structured knowledge graph for multi-hop reasoning
+- Single embedding-based retrieval only; no fallback/alternate retrieval
+  strategy when vector search returns poor results
+
+
+2. AGENT ORCHESTRATION MATURITY
+-------------------------------------------------------------
+- No long-term / episodic memory across sessions (only short-term
+  LangGraph checkpoint state within a single conversation thread)
+- Sub-agents execute sequentially via routing; no parallel agent execution
+  with result aggregation
+- No explicit planning layer (plan-and-execute); purely reactive routing,
+  no upfront task decomposition before acting
+
+
+3. EVALUATION & TESTING
+-------------------------------------------------------------
+- No automated evaluation pipeline (e.g. Ragas, Phoenix, Langfuse) to
+  measure faithfulness, relevance, or answer quality
+- LangSmith only shows what happened (tracing), not whether it was good
+  (no scoring/grading layer)
+- No unit tests for tool calls or agent logic
+- No regression testing against a golden query set
+- No CI/CD pipeline (the AWS deployment diagram in the README is
+  aspirational/proposed, not implemented)
+
+
+4. SECURITY / GUARDRAILS
+-------------------------------------------------------------
+- No prompt injection detection
+- No input/output content scanning (PII redaction, toxicity filtering, etc.)
+- No explicit tool-call authorization layer beyond the basic
+  safe/sensitive tool split
+- No rate limiting or hard cost/iteration caps to prevent runaway
+  token spend in agentic loops
+
+
+5. DATA / INFRASTRUCTURE LAYER
+-------------------------------------------------------------
+- Single data source (vector store only); no fusion with structured
+  databases or a graph store
+- No semantic caching layer for repeated/similar queries (a standard
+  cost-control mechanism in 2026 production systems)
+- No mechanism for incremental/streaming document updates to the
+  vector index
+
+
+6. DEPLOYMENT REALITY
+-------------------------------------------------------------
+- Runs locally via Docker Compose only
+- No actual cloud deployment, autoscaling, or load-handling demonstrated
+- AWS architecture in README is a proposed design, not a working system
+
+
+7. ERROR HANDLING & RESILIENCE
+-------------------------------------------------------------
+- No retry logic for malformed LLM outputs or failed tool calls
+- No fallback model (e.g. switch to a smaller/cheaper model or a
+  different provider if the primary LLM call fails or times out)
+- No circuit breaker pattern for downstream service failures
+  (vector DB down, external API down, etc.)
+- No graceful degradation path (e.g. answer from parametric knowledge
+  with a disclaimer if retrieval fails entirely)
+- No structured error responses back to the user; failures likely
+  surface as raw exceptions/stack traces
+
+
+8. PROMPT & MODEL ENGINEERING PRACTICES
+-------------------------------------------------------------
+- No structured output enforcement (e.g. Pydantic schemas / JSON mode)
+  for agent responses or tool-call arguments beyond what LangChain
+  provides by default
+- No prompt versioning or A/B testing of prompts
+- No model routing by task difficulty (e.g. cheap model for simple
+  routing decisions, stronger model reserved for synthesis/reasoning)
+- Single LLM provider (OpenAI) hardcoded; no abstraction layer to
+  swap providers/models without code changes
+
+
+9. COST & PERFORMANCE OPTIMIZATION
+-------------------------------------------------------------
+- No token usage tracking/budgeting per conversation or per user
+- No semantic caching (covered above) or prompt caching to cut
+  repeated-context costs
+- No latency benchmarking (p50/p95/p99) despite agentic loops being
+  known to add 2-5x latency over naive RAG
+- No streaming responses to the user (likely blocks until full
+  agent turn completes, hurting perceived responsiveness)
+
+
+10. MONITORING, LOGGING & ALERTING
+-------------------------------------------------------------
+- LangSmith gives tracing but no alerting on failures, latency
+  spikes, or cost anomalies
+- No structured application logs (request IDs, correlation across
+  the vectorizer and chat services)
+- No dashboard for operational health (uptime, error rate, queue
+  depth if scaled)
+
+
+11. DOCUMENTATION, COMPLIANCE & DATA GOVERNANCE
+-------------------------------------------------------------
+- No data retention / PII handling policy for stored conversations
+- No audit trail of what data was retrieved and shown to the user
+  (important for regulated domains, and increasingly expected given
+  the EU AI Act obligations taking effect in August 2026)
+- No API documentation (OpenAPI/Swagger) for the chat service
+- No architecture decision records (ADRs) explaining why choices
+  were made (useful for onboarding/portfolio credibility, not just
+  compliance)
+
+
+SUGGESTED PRIORITY ORDER TO CLOSE GAPS
+-------------------------------------------------------------
+1. Evaluation harness (Ragas) + basic test suite  -- least flashy, most
+   important for engineering credibility
+2. Error handling & resilience (retries, fallback model, graceful
+   degradation) -- cheap to add, immediately makes it feel "production"
+3. Hybrid search + reranker on top of existing Qdrant retrieval
+4. Adaptive routing (query classifier -> fast path vs. deep agentic path)
+5. Self-RAG / CRAG loop (self-evaluate retrieved context, re-retrieve
+   if confidence is low)
+6. Guardrails: prompt injection detection, cost/iteration caps
+7. Cost & performance instrumentation (token tracking, latency
+   benchmarking, streaming responses)
+8. Long-term agent memory across sessions
+9. Monitoring/alerting + structured logging
+10. CI/CD + real cloud deployment
+11. Documentation & governance (API docs, ADRs, data retention policy)

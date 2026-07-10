@@ -1,0 +1,55 @@
+running locally
+
+LLM: qwen2.5:3b via Ollama, running on your machine (CPU, since the GTX 1650's 4GB VRAM isn't being picked up)
+Embeddings: BAAI/bge-small-en-v1.5 via sentence-transformers, also local
+Vector DB: Qdrant, running in a local Docker container on localhost:6333
+SQLite: travel2.sqlite sitting on your local disk
+Backend: FastAPI running on localhost:8000
+Frontend: Streamlit running on localhost:8501
+LangSmith: the one exception — that's the only piece talking to the internet, sending traces to Anthropic's — sorry, LangChain's cloud (smith.langchain.com) for observability. Everything else stays on your machine.
+
+for prod:
+blueprint to deploy your customized system to production for $0/month.Since you are running the bge embedding model locally, standard free tiers (like Render or Heroku) will instantly crash because they only provide 512MB of RAM.Instead, we will deploy your Dockerized app to Hugging Face Spaces. Their free tier provides 16GB of RAM and 2 vCPUs, which is plenty of memory to run bge locally.Additionally, because Hugging Face has its own built-in Git hosting, you do not need to set up GitHub at all.The 100% Free ArchitectureVector Database: Qdrant Cloud (1GB free forever).Embeddings: Your local bge model, running in-memory on Hugging Face Spaces.LLM: Groq API. Since you want to use Qwen, Groq hosts Qwen models (like qwen3-32b or qwen-2.5) on their custom silicon for completely free. Running Qwen directly inside a free container would be too slow without a GPU, so offloading it to Groq's free API is the best approach.App Hosting: Hugging Face Spaces (Docker Environment - 16GB RAM free tier).  Step 1: Claim Your Free KeysQdrant Cloud: Go to cloud.qdrant.io, sign in, and create a free 1GB cluster. Save your Cluster URL and API Key.Groq API: Go to console.groq.com, create an account, and generate a free API Key.Step 2: Code AdjustmentsIn your local project folder, you need to make a few quick changes to point your code away from localhost and over to your free cloud services.1. Install the Groq LangChain package:Run this in your terminal:Bashpoetry add langchain-groq
+2. Update your LLM Initialization:Search your Python files for where you initialized your local Qwen model, and replace it with Groq:Pythonfrom langchain_groq import ChatGroq
+
+# Replace your current LLM setup with this:
+llm = ChatGroq(
+    model="qwen-2.5-32b", # or whichever Qwen model Groq currently lists in their console
+    api_key=os.environ.get("GROQ_API_KEY"),
+    temperature=0
+)
+3. Update your Qdrant connection:Find where Qdrant is initialized in both your vectorizer and customer_support_chat folders. Change it from the local Docker URL to the cloud URL:Pythonfrom qdrant_client import QdrantClient
+
+# Update this connection string
+client = QdrantClient(
+    url=os.environ.get("QDRANT_URL"), 
+    api_key=os.environ.get("QDRANT_API_KEY")
+)
+Step 3: Run the Vectorizer locally (One last time)Before deploying, 
+you need to populate your new Cloud Qdrant database.Add your new keys to your local .env file (QDRANT_URL, QDRANT_API_KEY).Run your vectorizer script locally: 
+poetry run python vectorizer/app/main.py.Log into the Qdrant Cloud dashboard to verify your data successfully uploaded.
+Step 4: Deploy to Hugging Face Spaces (No GitHub Needed)1. Create the SpaceGo to Hugging Face Spaces and create a new account 
+if you don't have one.Click Create new Space.Name it (e.g., rag-customer-support).IMPORTANT: Under "Select the Space SDK", 
+choose Docker and select the Blank template.Click Create Space.2. Add your Environment Variables (Secrets)In your new Space, 
+click on the Settings tab.Scroll down to Variables and secrets.Click New secret and add your production keys so they are hidden 
+from the public:GROQ_API_KEYQDRANT_URLQDRANT_API_KEY3. Push your code directly from your computerHugging Face Spaces acts as its own Git repository. 
+Open your terminal in your project folder and run these commands to push your code directly to production:Bash# Initialize git in your folder
+git init
+
+# Add all your files
+git add .
+
+# Create your first commit
+git commit -m "Initial production deployment"
+
+# Connect your local folder to your Hugging Face Space
+# (Replace USERNAME and SPACENAME with your actual Hugging Face details)
+git remote add origin https://huggingface.co/spaces/USERNAME/SPACENAME
+
+# Push the code to production
+git push -u origin main
+(Note: When you push, Hugging Face will ask for your username and password.
+ For the password, you must use a Hugging Face Access Token (with write permissions) which you can generate in your Hugging Face account settings under "Access Tokens".)
+ What happens next?As soon as the git push finishes, 
+ Hugging Face will detect your Dockerfile, automatically build your container, and spin up the chat interface. 
+ You now have a fully functional, multi-agent RAG system running in production for free!
