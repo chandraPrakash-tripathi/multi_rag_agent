@@ -1,0 +1,44 @@
+{
+    "datasets": [
+        {
+            "id": "jwst",
+            "name": "James Webb Space Telescope",
+            "provider": "NASA",
+            "type": "html",
+            "url": "https://science.nasa.gov/mission/webb/",
+            "storage": "qdrant"
+        },
+        {
+            "id": "artemis",
+            "name": "Artemis Mission",
+            "provider": "NASA",
+            "type": "html",
+            "url": "https://www.nasa.gov/humans-in-space/artemis/",
+            "storage": "qdrant"
+        },
+        {
+            "id": "hubble",
+            "name": "Hubble Space Telescope",
+            "provider": "NASA",
+            "type": "html",
+            "url": "https://science.nasa.gov/mission/hubble/",
+            "storage": "qdrant"
+        },
+        {
+            "id": "mars",
+            "name": "Mars Exploration",
+            "provider": "NASA",
+            "type": "html",
+            "url": "https://science.nasa.gov/mars/",
+            "storage": "qdrant"
+        },
+        {
+            "id": "earth_observatory",
+            "name": "NASA Earth Observatory",
+            "provider": "NASA",
+            "type": "html",
+            "url": "https://earthobservatory.nasa.gov/",
+            "storage": "qdrant"
+        }
+    ]
+}

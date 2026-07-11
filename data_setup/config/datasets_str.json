@@ -1,0 +1,44 @@
+{
+    "datasets": [
+        {
+            "id": "neows",
+            "name": "NASA Near Earth Object Web Service",
+            "url": "https://api.nasa.gov/neo/rest/v1/feed",
+            "api_key": true,
+            "params": {
+                "start_date": "2026-07-11",
+                "end_date": "2026-07-11"
+            }
+        },
+        {
+            "id": "donki",
+            "name": "NASA DONKI",
+            "url": "https://api.nasa.gov/DONKI/notifications",
+            "api_key": true,
+            "params": {}
+        },
+        {
+            "id": "eonet",
+            "name": "NASA EONET",
+            "url": "https://eonet.gsfc.nasa.gov/api/v3/events",
+            "api_key": false,
+            "params": {}
+        },
+        {
+            "id": "apod",
+            "name": "NASA APOD",
+            "url": "https://api.nasa.gov/planetary/apod",
+            "api_key": true,
+            "params": {}
+        },
+        {
+            "id": "spaceflight_news",
+            "name": "Spaceflight News",
+            "url": "https://api.spaceflightnewsapi.net/v4/articles",
+            "api_key": false,
+            "params": {
+                "limit": 10
+            }
+        }
+    ]
+}
