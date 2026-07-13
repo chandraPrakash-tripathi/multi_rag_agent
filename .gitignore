@@ -165,3 +165,9 @@ qdrant_storage
 *.sqlite
 *.DS_Store
 *.bkp*
+
+
+data_str/
+data_unstr/
+unified_layer.db
+docs/

@@ -2,6 +2,7 @@
     "datasets": [
         {
             "id": "neows",
+            "provider": "nasa",
             "name": "NASA Near Earth Object Web Service",
             "url": "https://api.nasa.gov/neo/rest/v1/feed",
             "api_key": true,
@@ -12,6 +13,7 @@
         },
         {
             "id": "donki",
+            "provider": "nasa",
             "name": "NASA DONKI",
             "url": "https://api.nasa.gov/DONKI/notifications",
             "api_key": true,
@@ -19,6 +21,7 @@
         },
         {
             "id": "eonet",
+            "provider": "nasa",
             "name": "NASA EONET",
             "url": "https://eonet.gsfc.nasa.gov/api/v3/events",
             "api_key": false,
@@ -26,6 +29,7 @@
         },
         {
             "id": "apod",
+            "provider": "nasa",
             "name": "NASA APOD",
             "url": "https://api.nasa.gov/planetary/apod",
             "api_key": true,
@@ -33,6 +37,7 @@
         },
         {
             "id": "spaceflight_news",
+            "provider": "spaceflight",
             "name": "Spaceflight News",
             "url": "https://api.spaceflightnewsapi.net/v4/articles",
             "api_key": false,

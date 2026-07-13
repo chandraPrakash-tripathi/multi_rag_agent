@@ -5,65 +5,102 @@ from datetime import datetime
 
 import requests
 
-ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-CONFIG = ROOT / "config" / "datasets_unstr.json"
+DATA_SETUP_ROOT = PROJECT_ROOT / "data_setup"
 
-RAW_DIR = ROOT / "data" / "raw_unstr_documents"
+CONFIG = DATA_SETUP_ROOT / "config" / "datasets_unstr.json"
+
+RAW_DATA_DIR = DATA_SETUP_ROOT / "data_unstr"
 
 
 def load_datasets():
 
-    with open(CONFIG, encoding="utf-8") as f:
+    with open(
+        CONFIG,
+        "r",
+        encoding="utf-8",
+    ) as f:
+
         return json.load(f)["datasets"]
 
 
-def fetch_document(dataset):
+def save_document(
+    dataset: dict,
+    response: requests.Response,
+):
 
-    print("=" * 80)
-    print(dataset["name"])
-    print("=" * 80)
+    provider = dataset["provider"]
+    dataset_id = dataset["id"]
 
-    response = requests.get(
-        dataset["url"],
-        timeout=30,
-    )
+    save_dir = RAW_DATA_DIR / provider / dataset_id
 
-    response.raise_for_status()
-
-    dataset_dir = RAW_DIR / dataset["id"]
-
-    dataset_dir.mkdir(
+    save_dir.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    extension = "html"
-
-    if dataset["type"] == "pdf":
-        extension = "pdf"
+    extension = dataset["type"]
 
     filename = f"{timestamp}.{extension}"
 
+    filepath = save_dir / filename
+
     with open(
-        dataset_dir / filename,
+        filepath,
         "wb",
     ) as f:
 
         f.write(response.content)
 
-    print(f"Saved -> {dataset_dir / filename}")
+    print(f"Saved -> {filepath}")
+
+
+def fetch_document(dataset):
+
+    print("=" * 80)
+    print(f"Dataset : {dataset['name']}")
+    print("=" * 80)
+
+    print("URL :", dataset["url"])
+
+    try:
+
+        response = requests.get(
+            dataset["url"],
+            timeout=30,
+        )
+
+        print(f"HTTP Status : {response.status_code}")
+
+        response.raise_for_status()
+
+        print("✓ Success")
+
+        save_document(
+            dataset,
+            response,
+        )
+
+    except Exception as e:
+
+        print(f"ERROR : {e}")
+
+        if "response" in locals():
+
+            print(response.text)
 
 
 def main():
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Fetch Knowledge Sources")
 
     parser.add_argument(
         "--dataset",
         default=None,
+        help="Dataset ID",
     )
 
     args = parser.parse_args()
@@ -73,6 +110,12 @@ def main():
     if args.dataset:
 
         datasets = [d for d in datasets if d["id"] == args.dataset]
+
+        if not datasets:
+
+            raise ValueError(f"Dataset '{args.dataset}' not found.")
+
+    print(f"\nFound {len(datasets)} dataset(s).\n")
 
     for dataset in datasets:
 
