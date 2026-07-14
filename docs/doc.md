@@ -1,24 +1,35 @@
-Space Intelligence Platform: A Production-Grade Multi-Agent RAG System
+# Space Intelligence Platform: A Production-Grade Multi-Agent RAG System
 
-An AI platform that continuously ingests live NASA data, orchestrates multiple AI agents, retrieves scientific knowledge using RAG, 
-performs analytics, and generates grounded intelligence reports.
+An AI platform that continuously ingests live NASA data, orchestrates multiple AI agents, retrieves scientific knowledge using RAG, performs analytics, and generates grounded intelligence reports.
 
-Build a production-grade AI system, not just a chatbot.
+The goal is to build a **production-grade AI system**, not just a chatbot.
+
+---
+
+# Objectives
 
 Demonstrate:
 
-Multi-Agent Systems
-LangGraph
-RAG
-Production Data Pipelines
-API Integration
-Analytics
-Cloud Deployment
-Observability
+- Multi-Agent Systems
+- LangGraph
+- RAG (Retrieval-Augmented Generation)
+- Production Data Pipelines
+- API Integration
+- Analytics
+- Cloud Deployment
+- Observability
 
-Domain: Space Intelligence & Earth Observation
+---
 
-High-Level Architecture:
+# Domain
+
+**Space Intelligence & Earth Observation**
+
+---
+
+# High-Level Architecture
+
+```text
                  User
                    │
             FastAPI Backend
@@ -37,284 +48,363 @@ High-Level Architecture:
      Data Ingestion Layer
             │
         NASA APIs
+```
 
-Agents
-    1. Near-Earth Object Agent
-Capability
-    Hazardous asteroid monitoring
-    Closest approaches
-    Speed analysis
-    Size analysis
-Example
+---
 
-    Which hazardous asteroids are approaching Earth this week?
+# Agents
 
-API
+## 1. Near-Earth Object Agent
 
-    NASA NeoWs
+### Capability
 
-Stores
-    PostgreSQL
-    
-2. Space Weather Agent
-Capability
-Solar flares
-CMEs
-Geomagnetic storms
-Example
+- Hazardous asteroid monitoring
+- Closest approaches
+- Speed analysis
+- Size analysis
 
-Any solar storms today?
+### Example
 
-API
+> Which hazardous asteroids are approaching Earth this week?
 
-NASA DONKI
+### API
 
-Stores
-PostgreSQL
-3. Earth Natural Events Agent
-Capability
-Wildfires
-Volcanoes
-Floods
-Storms
-Example
+- NASA NeoWs
 
-Show active wildfires today.
+### Stores
 
-API
+- PostgreSQL
 
-NASA EONET
+---
 
-Stores
-PostgreSQL
-4. Astronomy Media Agent
-Capability
+## 2. Space Weather Agent
 
-Explain NASA's Astronomy Picture of the Day.
+### Capability
 
-Example
+- Solar flares
+- CMEs
+- Geomagnetic storms
 
-Explain today's APOD.
+### Example
 
-API
+> Any solar storms today?
 
-NASA APOD
+### API
 
-Stores
+- NASA DONKI
 
-Optional
+### Stores
 
-(PostgreSQL if maintaining history.)
+- PostgreSQL
 
-5. Space Knowledge Agent (RAG)
-Capability
+---
+
+## 3. Earth Natural Events Agent
+
+### Capability
+
+- Wildfires
+- Volcanoes
+- Floods
+- Storms
+
+### Example
+
+> Show active wildfires today.
+
+### API
+
+- NASA EONET
+
+### Stores
+
+- PostgreSQL
+
+---
+
+## 4. Astronomy Media Agent
+
+### Capability
+
+- Explain NASA's Astronomy Picture of the Day
+
+### Example
+
+> Explain today's APOD.
+
+### API
+
+- NASA APOD
+
+### Stores
+
+Optional:
+
+- PostgreSQL (if maintaining history)
+
+---
+
+## 5. Space Knowledge Agent (RAG)
+
+### Capability
 
 Answer scientific questions.
 
-Example
+### Example
 
-Explain black holes.
+- Explain black holes.
+- Explain James Webb Telescope.
 
-Explain James Webb Telescope.
+### Documents
 
-Documents
-NASA mission docs
-NASA educational articles
-Mission PDFs
-Stores
-Qdrant
-6. Space News Agent
-Capability
+- NASA mission docs
+- NASA educational articles
+- Mission PDFs
 
-Latest launches
+### Stores
 
-Latest discoveries
+- Qdrant
 
-Mission updates
+---
 
-API
+## 6. Space News Agent
 
-Spaceflight News API
+### Capability
 
-Stores
+- Latest launches
+- Latest discoveries
+- Mission updates
 
-Metadata → PostgreSQL
+### API
 
-(Optional) Article body → Qdrant for semantic search
+- Spaceflight News API
 
-7. Analytics Agent
+### Stores
 
-Consumes
+Metadata:
 
-Asteroids
-Weather
-Earth Events
-News
+- PostgreSQL
 
-Produces
+Optional:
 
-Trends
-Comparisons
-Statistics
-Charts
+- Article body → Qdrant for semantic search
 
-No external API.
+---
 
-8. Report Generation Agent
+## 7. Analytics Agent
 
-Produces
+### Consumes
 
-Executive Summary
-Current Events
-Space Weather
-Asteroid Risk
-Earth Events
-References
+- Asteroids
+- Weather
+- Earth Events
+- News
 
+### Produces
 
-Data Sources
-API	Used By
-NASA NeoWs	Near-Earth Object Agent
-NASA DONKI	Space Weather Agent
-NASA EONET	Earth Events Agent
-NASA APOD	Astronomy Media Agent
-NASA Docs	Knowledge Agent
-Spaceflight News API	News Agent
+- Trends
+- Comparisons
+- Statistics
+- Charts
 
+### External APIs
 
-Storage Strategy
+None
 
-One of the biggest architectural decisions is where data lives.
+---
 
-PostgreSQL (Structured Data)
+## 8. Report Generation Agent
 
-Store:
+### Produces
 
-Near Earth Objects
-Solar Events
-Earth Events
-APOD history (optional)
-News metadata
-Historical API data
+- Executive Summary
+- Current Events
+- Space Weather
+- Asteroid Risk
+- Earth Events
+- References
 
-Purpose:
+---
 
-Filtering
-Analytics
-SQL Queries
-Trend Analysis
+# Data Sources
 
-Example
+| API | Used By |
+|------|----------|
+| NASA NeoWs | Near-Earth Object Agent |
+| NASA DONKI | Space Weather Agent |
+| NASA EONET | Earth Events Agent |
+| NASA APOD | Astronomy Media Agent |
+| NASA Docs | Knowledge Agent |
+| Spaceflight News API | News Agent |
 
+---
+
+# Storage Strategy
+
+One of the biggest architectural decisions is **where data lives**.
+
+---
+
+## PostgreSQL (Structured Data)
+
+### Store
+
+- Near Earth Objects
+- Solar Events
+- Earth Events
+- APOD history (optional)
+- News metadata
+- Historical API data
+
+### Purpose
+
+- Filtering
+- Analytics
+- SQL Queries
+- Trend Analysis
+
+### Example
+
+```sql
 SELECT *
 FROM asteroids
 WHERE hazardous = TRUE;
-Qdrant (Semantic Memory)
+```
 
-Store:
+---
 
-NASA PDFs
-Mission documentation
-Educational articles
-Long news articles (optional)
-Technical manuals
+## Qdrant (Semantic Memory)
 
-Purpose:
+### Store
+
+- NASA PDFs
+- Mission documentation
+- Educational articles
+- Long news articles (optional)
+- Technical manuals
+
+### Purpose
 
 Semantic Retrieval
 
-Example
+### Example
 
-Explain asteroids similar to Apophis.
+> Explain asteroids similar to Apophis.
 
-GraphState (Temporary)
+---
+
+## GraphState (Temporary)
 
 Stores only the current execution.
 
-Destroyed after request finishes.
+Destroyed after the request finishes.
 
-Never use GraphState as storage.
+**Never use GraphState as storage.**
 
-🧠 GraphState Design
+---
 
-Think of GraphState as working memory.
+# GraphState Design
+
+Think of **GraphState** as **working memory**.
 
 Not a database.
 
-Layer 1 — Conversation
-messages
+---
 
-user_query
+## Layer 1 — Conversation
 
-conversation_id
-Layer 2 — Routing
-intent
+- messages
+- user_query
+- conversation_id
 
-required_agents
+---
 
-execution_plan
-Layer 3 — Domain Data
+## Layer 2 — Routing
+
+- intent
+- required_agents
+- execution_plan
+
+---
+
+## Layer 3 — Domain Data
 
 Notice:
 
-These are domain concepts.
+These are **domain concepts**.
 
-NOT agent outputs.
+**NOT agent outputs.**
 
-near_earth_objects
-
-solar_events
-
-natural_events
-
-astronomy_media
-
-space_news
+- near_earth_objects
+- solar_events
+- natural_events
+- astronomy_media
+- space_news
 
 The state answers:
 
-What does the application currently know?
+> What does the application currently know?
 
-NOT
+**NOT**
 
-Which agent produced this?
+> Which agent produced this?
 
-Layer 4 — Knowledge
-retrieved_documents
+---
 
-citations
-Layer 5 — Intelligence
+## Layer 4 — Knowledge
+
+- retrieved_documents
+- citations
+
+---
+
+## Layer 5 — Intelligence
 
 Generated by AI.
 
-analytics
+- analytics
+- summaries
+- risk_scores
+- comparisons
+- confidence
 
-summaries
+---
 
-risk_scores
+## Layer 6 — Output
 
-comparisons
+- final_answer
+- report
+- charts
 
-confidence
-Layer 6 — Output
-final_answer
+---
 
-report
-
-charts
-Layer 7 — System
+## Layer 7 — System
 
 Useful for production.
 
-errors
+- errors
+- execution_logs
+- completed_agents
+- execution_time
 
-execution_logs
+---
 
-completed_agents
+# Final Architecture Summary
 
-execution_time
+This system combines:
 
+- Live NASA data ingestion
+- Multiple specialized LangGraph agents
+- Retrieval-Augmented Generation (RAG)
+- PostgreSQL for structured operational data
+- Qdrant for semantic knowledge retrieval
+- Analytics generation
+- Executive report generation
+- Production-ready GraphState orchestration
+- FastAPI backend
+- Cloud deployment and observability
 
+The result is a **production-grade Space Intelligence Platform** capable of continuously collecting, analyzing, retrieving, and explaining space-related information using multiple AI agents working together.
 
+----------------------------------
 
-final archi:
