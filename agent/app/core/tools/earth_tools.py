@@ -1,0 +1,32 @@
+from langchain_core.tools import tool
+from agent.app.core.repository.earth_repository import EarthEventsRepository
+
+_repo = EarthEventsRepository()
+
+
+@tool
+def get_active_earth_events(category: str = None, limit: int = 10) -> str:
+    """Get currently active (open) Earth natural events from the last 30 days,
+    such as wildfires, volcanoes, or severe storms.
+
+    Args:
+        category: Filter by category, e.g. 'Wildfires', 'Volcanoes', 'Severe Storms'.
+                  Omit to get all categories. Must match NASA EONET category naming exactly.
+        limit: Max number of events to return.
+    """
+    results = _repo.get_active_events(category=category, limit=limit)
+    if not results:
+        scope = f" in category '{category}'" if category else ""
+        return f"No active earth events{scope} found in the last 30 days."
+
+    lines = [f"Found {len(results)} active earth event(s):"]
+    for r in results:
+        mag = (
+            f", magnitude: {r['magnitude_value']} {r.get('magnitude_unit', '')}"
+            if r.get("magnitude_value")
+            else ""
+        )
+        lines.append(
+            f"- **{r['title']}** ({r.get('category', 'Uncategorized')}) — since {r['event_timestamp']}{mag}"
+        )
+    return "\n".join(lines)

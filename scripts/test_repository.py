@@ -1,4 +1,4 @@
-from agent.app.core.repository import DataRepository
+from agent.app.core.repository.base import DataRepository
 
 
 def run_tests():

@@ -43,3 +43,4 @@ class UnifiedKnowledge(Base):
     )  # Plain text/markdown content optimized for LLM context windows
     source_url = Column(String, nullable=True)
     processed_at = Column(DateTime, default=datetime.utcnow)
+    published_at = Column(DateTime, nullable=True, index=True)
