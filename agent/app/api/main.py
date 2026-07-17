@@ -27,7 +27,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from agent.app.graph import multi_agentic_graph
+from agent.app.core.graph import multi_agentic_graph
 from agent.app.core.logger import logger
 
 DEFAULT_PASSENGER_ID = "3442 587242"
