@@ -4,6 +4,7 @@ from langchain_core.messages import HumanMessage, ToolMessage
 from agent.app.core.assistant.assistant import AssistantBase
 from agent.app.core.graph.graph_state import GraphState
 from datetime import date
+import time
 from langchain_core.messages import SystemMessage
 
 # agent_node_factory.py — add these two lines at the very top, right after the imports
@@ -26,6 +27,8 @@ def make_agent_node(
     """
 
     def node(state: GraphState) -> Command[Literal["supervisor"]]:
+        start_time = time.time()
+        print(f"[TIMING {name}] started at {start_time:.3f}")
         today_str = date.today().isoformat()
         local_messages = [
             SystemMessage(
@@ -79,6 +82,9 @@ def make_agent_node(
                 flat = [item for artifact in collected_artifacts for item in artifact]
                 update[state_key] = flat
 
+        print(
+            f"[TIMING {name}] finished at {time.time():.3f} (took {time.time()-start_time:.2f}s)"
+        )
         return Command(goto="supervisor", update=update)
 
     return node

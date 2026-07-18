@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph, START
 from langgraph.checkpoint.sqlite import SqliteSaver
 import uuid
-
+from agent.app.core.agents.auditor_agent import auditor_node
 from agent.app.core.graph.graph_state import GraphState
 from agent.app.core.graph.supervisor import supervisor_node
 from agent.app.core.agents.agent_node_factory import make_agent_node
@@ -107,12 +107,12 @@ def build_graph(checkpointer):
     builder.add_node("news_agent", build_news_node())
     builder.add_node("knowledge_agent", build_knowledge_node())
     builder.add_node("analytics_agent", analytics_node)
+    builder.add_node(
+        "auditor_agent", auditor_node
+    )  # <-- add here, alongside the others
     builder.add_node("report_agent", report_node)
 
     builder.add_edge(START, "supervisor")
-    # No further add_edge calls — every specialist and the report node return
-    # their own Command(goto=...), so routing lives in the nodes themselves.
-
     return builder.compile(checkpointer=checkpointer)
 
 
@@ -125,13 +125,13 @@ if __name__ == "__main__":
         config = {"configurable": {"thread_id": f"test_{uuid.uuid4().hex[:8]}"}}
         result = graph.invoke(
             {
-                "user_query": "Are there any hazardous asteroids approaching this week?",
+                "user_query": "Are there any active wildfires or solar storms right now?",
                 "messages": [
                     HumanMessage(
-                        content="Are there any hazardous asteroids approaching this week?"
+                        content="Are there any active wildfires or solar storms right now?"
                     )
                 ],
             },
-            config=config,
+            config={"configurable": {"thread_id": f"test_{uuid.uuid4().hex[:8]}"}},
         )
         print(result["final_answer"])

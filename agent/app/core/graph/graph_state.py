@@ -60,3 +60,5 @@ class GraphState(BaseModel):
     execution_logs: Annotated[list[str], add] = Field(default_factory=list)
     completed_agents: Annotated[list[str], add] = Field(default_factory=list)
     execution_time: Optional[float] = None
+    # graph_state.py — add near cycle_count in Layer 7
+    audit_cycle_count: int = 0

@@ -1,14 +1,13 @@
 from langchain_core.tools import tool
 from agent.app.core.repository.earth_repository import EarthEventsRepository
-
-_repo = EarthEventsRepository()
-
+from typing import Optional
 
 _repo = EarthEventsRepository()
 
 
 @tool(response_format="content_and_artifact")
-def get_active_earth_events(category: str = None, limit: int = 10):
+# earth_tools.py
+def get_active_earth_events(category: Optional[str] = None, limit: int = 10):
     """Get currently active (open) Earth natural events from the last 30 days,
     such as wildfires, volcanoes, or severe storms.
 

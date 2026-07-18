@@ -14,28 +14,62 @@ AVAILABLE_AGENTS = {
     "analytics_agent": "Analytics Agent - trends/statistics on data already gathered. Only valid after at least one data-gathering agent has completed.",
 }
 
-MAX_CYCLES = 6  # hard ceiling, independent of what the LLM decides
+# Lowered from 6 -> 3 for now while iterating on prompt behavior. Each cycle
+# can take 60-240s on local Ollama with multiple agents, so a full 6-cycle
+# run during debugging is painfully slow. Raise back to 6 once redundant
+# re-selection is confirmed fixed and you're doing a real end-to-end test.
+MAX_CYCLES = 3
 
 _SYSTEM_PROMPT = (
     "You are the supervisor of a space intelligence multi-agent system.\n"
     "Given the user's query and what has been gathered so far, decide which "
     "agent(s) should run next.\n\nAvailable agents:\n"
     + "\n".join(f"- {k}: {v}" for k, v in AVAILABLE_AGENTS.items())
-    + "\n\nRules:\n"
-    "- Only select agents relevant to the user's query.\n"
-    "- Do not re-select an agent already in completed_agents unless new "
-    "information genuinely requires it.\n"
-    "- analytics_agent only runs after at least one data-gathering agent has "
-    "already completed.\n"
-    "- Once enough information has been gathered to answer the query, "
-    "respond with exactly: DONE\n\n"
-    "Respond with a comma-separated list of agent names to run next, or DONE. "
-    "Nothing else."
+    + "\n\nCRITICAL RULES:\n"
+    "- If an agent's status below says 'ALREADY RUN, found N item(s)' with "
+    "N greater than 0, it has already succeeded — NEVER re-select it. "
+    "Re-running a successful agent wastes time and produces no new "
+    "information.\n"
+    "- Only re-select a previously run agent if its status shows 0 items "
+    "found AND you have a specific, stated reason a retry would help (e.g. "
+    "a narrower or different date range). Do not retry just because you "
+    "want more data — zero is a valid answer.\n"
+    "- As soon as every data-gathering agent relevant to the user's query "
+    "has been run at least once — regardless of whether each one found "
+    "data or not — respond DONE. Finding zero results is a valid, final "
+    "answer. Do not keep querying an agent hoping for a different result.\n"
+    "- analytics_agent only runs after at least one data-gathering agent "
+    "has already completed with results.\n"
+    "- Only select agents relevant to the user's query in the first place.\n\n"
+    "Respond with a comma-separated list of agent names to run next, or "
+    "respond with exactly: DONE\n"
+    "Nothing else — no explanation, no punctuation around the words."
 )
 
 # No tools needed for a routing decision — reuse AssistantBase purely for its
 # environment-aware LLM initialization (local Ollama vs prod Groq), not its tool loop.
 _supervisor_llm = AssistantBase(system_prompt=_SYSTEM_PROMPT, temperature=0.0).llm
+
+
+def _agent_status_line(agent_name: str, label: str, completed: list, count: int) -> str:
+    if agent_name not in completed:
+        return f"- {agent_name} ({label}): not yet run"
+    return f"- {agent_name} ({label}): ALREADY RUN, found {count} item(s) — do not re-run unless you have a specific reason"
+
+
+def _build_context(state: GraphState) -> str:
+    return (
+        f"User query: {state.user_query}\n\n"
+        f"Agent status:\n"
+        f"{_agent_status_line('neo_agent', 'Near-Earth Objects', state.completed_agents, len(state.near_earth_objects))}\n"
+        f"{_agent_status_line('weather_agent', 'Space Weather', state.completed_agents, len(state.solar_events))}\n"
+        f"{_agent_status_line('earth_agent', 'Earth Events', state.completed_agents, len(state.natural_events))}\n"
+        f"{_agent_status_line('apod_agent', 'Astronomy Picture', state.completed_agents, 1 if state.astronomy_media else 0)}\n"
+        f"{_agent_status_line('news_agent', 'Space News', state.completed_agents, len(state.space_news))}\n"
+        f"{_agent_status_line('knowledge_agent', 'Scientific Knowledge', state.completed_agents, len(state.retrieved_documents))}\n"
+        f"{_agent_status_line('analytics_agent', 'Analytics', state.completed_agents, 1 if state.analytics else 0)}\n\n"
+        f"Errors so far: {state.errors}"
+    )
 
 
 def supervisor_node(state: GraphState) -> Command[
@@ -60,19 +94,11 @@ def supervisor_node(state: GraphState) -> Command[
             },
         )
 
-    context = (
-        f"User query: {state.user_query}\n"
-        f"Completed agents: {state.completed_agents}\n"
-        f"Errors so far: {state.errors}\n"
-        f"Data collected — NEO: {len(state.near_earth_objects)}, "
-        f"Weather: {len(state.solar_events)}, Earth: {len(state.natural_events)}, "
-        f"APOD: {'yes' if state.astronomy_media else 'no'}, "
-        f"News: {len(state.space_news)}, Knowledge docs: {len(state.retrieved_documents)}"
-    )
+    context = _build_context(state)
 
     response = _supervisor_llm.invoke(
         [
-            SystemMessage(content=_SYSTEM_PROMPT),  # <-- was missing entirely
+            SystemMessage(content=_SYSTEM_PROMPT),
             SystemMessage(content=context),
         ]
     )
