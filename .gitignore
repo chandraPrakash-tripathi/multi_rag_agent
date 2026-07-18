@@ -170,7 +170,7 @@ qdrant_storage
 data_str/
 data_unstr/
 unified_layer.db
-docs/
 checkpoints.db-shm
 checkpoints.db-wal
 checkpoints.db
+/docs/
