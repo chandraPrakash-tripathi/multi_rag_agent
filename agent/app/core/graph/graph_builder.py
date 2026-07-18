@@ -1,50 +1,137 @@
 from langgraph.graph import StateGraph, START
 from langgraph.checkpoint.sqlite import SqliteSaver
-from graph.graph_state import GraphState
-from graph.supervisor import supervisor_node
-from agents.agent_node_factory import make_agent_node
-from assistant.assistant import AssistantBase
-from tools.asteroid_tools import (
+import uuid
+
+from agent.app.core.graph.graph_state import GraphState
+from agent.app.core.graph.supervisor import supervisor_node
+from agent.app.core.agents.agent_node_factory import make_agent_node
+from agent.app.core.agents.analytics_agent import analytics_node
+from agent.app.core.agents.report_agent import report_node
+from agent.app.core.assistant.assistant import AssistantBase
+
+from agent.app.core.tools.asteroid_tools import (
     get_hazardous_asteroids,
     get_asteroid_closest_approaches,
 )
+from agent.app.core.tools.weather_tools import get_space_weather_events
+from agent.app.core.tools.earth_tools import get_active_earth_events
+from agent.app.core.tools.apod_tools import get_apod_by_date
+from agent.app.core.tools.news_tools import get_latest_space_news, search_news_archives
+from agent.app.core.tools.knowledge_tools import search_scientific_knowledge
 
-# ... same import pattern for weather_tools, earth_tools, apod_tools, knowledge_tools, news_tools
 
-# --- NEO Agent ---
-neo_tools = [get_hazardous_asteroids, get_asteroid_closest_approaches]
-neo_assistant = AssistantBase(
-    system_prompt="You monitor near-Earth objects. Use your tools to answer questions about hazardous asteroids and close approaches.",
-    tools=neo_tools,
-)
-neo_node = make_agent_node(
-    name="neo_agent",
-    assistant=neo_assistant,
-    tool_map={t.name: t for t in neo_tools},
-    state_key="near_earth_objects",
-)
+def build_neo_node():
+    tools = [get_hazardous_asteroids, get_asteroid_closest_approaches]
+    assistant = AssistantBase(
+        system_prompt="You monitor near-Earth objects. Use your tools to answer questions about hazardous asteroids and close approaches.",
+        tools=tools,
+    )
+    return make_agent_node(
+        "neo_agent",
+        assistant,
+        {t.name: t for t in tools},
+        state_key="near_earth_objects",
+    )
 
-# ... repeat for weather_agent, earth_agent, apod_agent, news_agent using their
-#     respective tool modules and state_key ("solar_events", "natural_events",
-#     "astronomy_media", "space_news")
 
-builder = StateGraph(GraphState)
-builder.add_node("supervisor", supervisor_node)
-builder.add_node("neo_agent", neo_node)
-# builder.add_node("weather_agent", weather_node)
-# builder.add_node("earth_agent", earth_node)
-# builder.add_node("apod_agent", apod_node)
-# builder.add_node("news_agent", news_node)
-# builder.add_node("knowledge_agent", knowledge_node)
-# builder.add_node("analytics_agent", analytics_node)
-# builder.add_node("report_agent", report_node)
+def build_weather_node():
+    tools = [get_space_weather_events]
+    assistant = AssistantBase(
+        system_prompt="You monitor space weather. Use your tools to answer questions about solar flares, CMEs, and geomagnetic storms.",
+        tools=tools,
+    )
+    return make_agent_node(
+        "weather_agent", assistant, {t.name: t for t in tools}, state_key="solar_events"
+    )
 
-builder.add_edge(START, "supervisor")
-# No other add_edge calls needed — every specialist node returns
-# Command(goto="supervisor", ...) itself, and the supervisor's Command
-# decides the next hop each cycle. This is the "edgeless" pattern current
-# LangGraph favors for supervisor topologies — routing lives in the nodes,
-# not in a separate edge-definition step.
 
-with SqliteSaver.from_conn_string("checkpoints.db") as checkpointer:
-    graph = builder.compile(checkpointer=checkpointer)
+def build_earth_node():
+    tools = [get_active_earth_events]
+    assistant = AssistantBase(
+        system_prompt="You monitor Earth natural events. Use your tools to answer questions about wildfires, volcanoes, floods, and storms.",
+        tools=tools,
+    )
+    return make_agent_node(
+        "earth_agent", assistant, {t.name: t for t in tools}, state_key="natural_events"
+    )
+
+
+def build_apod_node():
+    tools = [get_apod_by_date]
+    assistant = AssistantBase(
+        system_prompt="You explain NASA's Astronomy Picture of the Day. Use your tool to fetch and explain the APOD for a given date.",
+        tools=tools,
+    )
+    return make_agent_node(
+        "apod_agent",
+        assistant,
+        {t.name: t for t in tools},
+        state_key="astronomy_media",
+        merge=lambda artifacts: (artifacts[-1] if artifacts else None),
+    )
+
+
+def build_news_node():
+    tools = [get_latest_space_news, search_news_archives]
+    assistant = AssistantBase(
+        system_prompt="You cover space news. Use get_latest_space_news for recent headlines and search_news_archives for historical/topic-specific queries.",
+        tools=tools,
+    )
+    return make_agent_node(
+        "news_agent", assistant, {t.name: t for t in tools}, state_key="space_news"
+    )
+
+
+def build_knowledge_node():
+    tools = [search_scientific_knowledge]
+    assistant = AssistantBase(
+        system_prompt="You answer scientific questions about space topics using semantic search over NASA documentation.",
+        tools=tools,
+    )
+    return make_agent_node(
+        "knowledge_agent",
+        assistant,
+        {t.name: t for t in tools},
+        state_key="retrieved_documents",
+    )
+
+
+def build_graph(checkpointer):
+    builder = StateGraph(GraphState)
+
+    builder.add_node("supervisor", supervisor_node)
+    builder.add_node("neo_agent", build_neo_node())
+    builder.add_node("weather_agent", build_weather_node())
+    builder.add_node("earth_agent", build_earth_node())
+    builder.add_node("apod_agent", build_apod_node())
+    builder.add_node("news_agent", build_news_node())
+    builder.add_node("knowledge_agent", build_knowledge_node())
+    builder.add_node("analytics_agent", analytics_node)
+    builder.add_node("report_agent", report_node)
+
+    builder.add_edge(START, "supervisor")
+    # No further add_edge calls — every specialist and the report node return
+    # their own Command(goto=...), so routing lives in the nodes themselves.
+
+    return builder.compile(checkpointer=checkpointer)
+
+
+if __name__ == "__main__":
+    from langchain_core.messages import HumanMessage
+
+    with SqliteSaver.from_conn_string("checkpoints.db") as checkpointer:
+        graph = build_graph(checkpointer)
+
+        config = {"configurable": {"thread_id": f"test_{uuid.uuid4().hex[:8]}"}}
+        result = graph.invoke(
+            {
+                "user_query": "Are there any hazardous asteroids approaching this week?",
+                "messages": [
+                    HumanMessage(
+                        content="Are there any hazardous asteroids approaching this week?"
+                    )
+                ],
+            },
+            config=config,
+        )
+        print(result["final_answer"])

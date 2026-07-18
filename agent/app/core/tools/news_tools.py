@@ -6,8 +6,8 @@ _news_repo = NewsRepository()
 _knowledge_repo = KnowledgeRepository()
 
 
-@tool
-def get_latest_space_news(limit: int = 10) -> str:
+@tool(response_format="content_and_artifact")
+def get_latest_space_news(limit: int = 10):
     """Get the most recently published spaceflight news articles.
 
     Args:
@@ -15,18 +15,18 @@ def get_latest_space_news(limit: int = 10) -> str:
     """
     results = _news_repo.get_latest(limit=limit)
     if not results:
-        return "No spaceflight news articles found."
+        return "No spaceflight news articles found.", []
 
     lines = [f"Latest {len(results)} spaceflight news article(s):"]
     for r in results:
         lines.append(
             f"- **{r['title']}** ({r.get('published_at', 'date unknown')}) — {r.get('source_url', '')}"
         )
-    return "\n".join(lines)
+    return "\n".join(lines), results
 
 
-@tool
-def search_news_archives(query: str, limit: int = 5) -> str:
+@tool(response_format="content_and_artifact")
+def search_news_archives(query: str, limit: int = 5):
     """Semantically search historical spaceflight news articles for a topic or mission.
 
     Args:
@@ -35,11 +35,11 @@ def search_news_archives(query: str, limit: int = 5) -> str:
     """
     results = _knowledge_repo.search_news_archives(query, limit=limit)
     if not results:
-        return f"No news archive results found for: {query}"
+        return f"No news archive results found for: {query}", []
 
     lines = [f"Found {len(results)} relevant article(s) for '{query}':"]
     for r in results:
         lines.append(
             f"- **{r['title']}** (relevance: {r['score']:.2f})\n  {r['text'][:300]}..."
         )
-    return "\n".join(lines)
+    return "\n".join(lines), results

@@ -22,13 +22,11 @@ class KnowledgeRepository:
                 "all-MiniLM-L6-v2"
             )
 
+    # repositories/knowledge_repository.py — updated _search method
+
     def _search(
-        self,
-        query: str,
-        limit: int,
-        dataset_filter: Optional[str] = None,
-        exclude_datasets: Optional[List[str]] = None,
-    ) -> List[dict]:
+        self, query: str, limit: int, dataset_filter=None, exclude_datasets=None
+    ) -> list[dict]:
         query_vector = KnowledgeRepository._embedding_model.encode(query).tolist()
 
         must_conditions = []
@@ -52,22 +50,22 @@ class KnowledgeRepository:
                 must=must_conditions or None, must_not=must_not_conditions or None
             )
 
-        results = self.qdrant.search(
+        response = self.qdrant.query_points(
             collection_name=self.collection_name,
-            query_vector=query_vector,
+            query=query_vector,  # note: 'query', not 'query_vector' — different param name
             query_filter=qdrant_filter,
             limit=limit,
         )
 
         return [
             {
-                "text": hit.payload.get("page_content"),
-                "title": hit.payload.get("title"),
-                "source_id": hit.payload.get("source_id"),
-                "dataset": hit.payload.get("dataset"),
-                "score": hit.score,
+                "text": point.payload.get("page_content"),
+                "title": point.payload.get("title"),
+                "source_id": point.payload.get("source_id"),
+                "dataset": point.payload.get("dataset"),
+                "score": point.score,
             }
-            for hit in results
+            for point in response.points  # query_points wraps results in a .points list
         ]
 
     def search_scientific_knowledge(self, query: str, limit: int = 3) -> List[dict]:

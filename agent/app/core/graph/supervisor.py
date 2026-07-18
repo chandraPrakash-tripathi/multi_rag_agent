@@ -2,7 +2,7 @@ from typing import Literal
 from langgraph.types import Command
 from langchain_core.messages import SystemMessage
 from agent.app.core.graph.graph_state import GraphState
-from assistant.assistant import AssistantBase
+from ..assistant.assistant import AssistantBase
 
 AVAILABLE_AGENTS = {
     "neo_agent": "Near-Earth Object Agent - hazardous asteroid monitoring, closest approaches",
@@ -70,8 +70,15 @@ def supervisor_node(state: GraphState) -> Command[
         f"News: {len(state.space_news)}, Knowledge docs: {len(state.retrieved_documents)}"
     )
 
-    response = _supervisor_llm.invoke([SystemMessage(content=context)])
+    response = _supervisor_llm.invoke(
+        [
+            SystemMessage(content=_SYSTEM_PROMPT),  # <-- was missing entirely
+            SystemMessage(content=context),
+        ]
+    )
     decision = (response.content or "").strip()
+    print(f"[DEBUG] Supervisor context sent:\n{context}\n")
+    print(f"[DEBUG] Supervisor raw decision: {decision!r}")
     log_entry = f"Supervisor cycle {state.cycle_count}: '{decision}'"
 
     if decision.upper() == "DONE":
