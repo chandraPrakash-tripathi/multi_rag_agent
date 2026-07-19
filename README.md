@@ -226,8 +226,3 @@ Response:
 - Analytics currently covers asteroids and earth events; more domains can be added following the same pattern.
 - Frontend does not yet render the analytics agent's chart output.
 
----
-
-## License
-
-Add your preferred license here (e.g. MIT).
