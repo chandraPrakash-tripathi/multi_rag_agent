@@ -1,0 +1,28 @@
+flowchart TD
+    subgraph BACKEND["agent/app/main.py — FastAPI"]
+        LIFESPAN["lifespan()<br/>opens SqliteSaver, builds graph once at startup"]
+        CHECKPOINT[("checkpoints.db<br/>per-thread_id conversation state")]
+        AUTH["verify_api_key()<br/>checks x-api-key header if API_KEY set"]
+        LIMITER["slowapi Limiter<br/>10 requests/min per IP"]
+        QUERY_EP["POST /query<br/>runs graph.invoke(), returns QueryResponse"]
+        HEALTH_EP["GET /health"]
+    end
+
+    subgraph FRONTEND["frontend/src/app"]
+        LAYOUT["layout.tsx<br/>fonts, root HTML shell"]
+        PAGE["page.tsx<br/>textarea, submit, result rendering"]
+        UI_COMPONENTS["components/ui/*.tsx<br/>shadcn primitives: Card, Button, Badge, etc."]
+    end
+
+    GRAPH["compiled LangGraph<br/>(from Stage 6)"]
+
+    LIFESPAN --> CHECKPOINT
+    LIFESPAN --> GRAPH
+    AUTH --> QUERY_EP
+    LIMITER --> QUERY_EP
+    GRAPH --> QUERY_EP
+
+    LAYOUT --> PAGE
+    UI_COMPONENTS --> PAGE
+    PAGE -->|"fetch POST, x-api-key header"| QUERY_EP
+    QUERY_EP -->|"final_answer, report, errors,<br/>completed_agents, execution_logs"| PAGE

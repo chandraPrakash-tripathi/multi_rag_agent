@@ -1,0 +1,51 @@
+flowchart TD
+    subgraph CONFIG["data_setup/config"]
+        C1["datasets_str.json<br/>neows, donki, eonet, apod, spaceflight_news"]
+        C2["datasets_unstr.json<br/>jwst, artemis, hubble, mars, earth_observatory"]
+    end
+
+    subgraph INGEST["data_setup/ingestion — Bronze layer"]
+        SETTINGS["scripts/settings.py<br/>loads NASA_API_KEY from .env"]
+        FS["fetch_str.py<br/>GET each JSON API, save timestamped raw file"]
+        FU["fetch_unstr.py<br/>GET each HTML page, save timestamped raw file"]
+        BRONZE_STR[["data_setup/data_str/&#123;provider&#125;/&#123;dataset_id&#125;/*.json"]]
+        BRONZE_HTML[["data_setup/data_unstr/&#123;provider&#125;/&#123;dataset_id&#125;/*.html"]]
+    end
+
+    subgraph UNIFIED["data_setup/unified_layer — Silver layer"]
+        MODELS["models.py<br/>UnifiedEvent + UnifiedKnowledge (SQLAlchemy)"]
+        DATABASE["database.py<br/>engine + SessionLocal + init_db()"]
+        BASE_T["transformers/base.py<br/>BaseTransformer interface"]
+        T_NEOWS["transformers/neows.py"]
+        T_DONKI["transformers/donki.py"]
+        T_EONET["transformers/eonet.py"]
+        T_APOD["transformers/apod.py"]
+        T_SFN["transformers/spaceflight.py"]
+        T_HTML["transformers/html_docs.py"]
+        REGISTRY["transformers/__init__.py<br/>TRANSFORMER_REGISTRY"]
+        ENGINE["engine.py<br/>UnifiedEngine.run_pipeline()"]
+        DB[("unified_layer.db<br/>unified_events / unified_knowledge")]
+    end
+
+    subgraph VECTORL["data_setup/vector_layer"]
+        BUILDER["builder.py<br/>VectorKnowledgeBuilder"]
+        QDRANT[("Qdrant<br/>unified_knowledge_collection")]
+    end
+
+    C1 --> FS
+    C2 --> FU
+    SETTINGS --> FS
+    FS --> BRONZE_STR
+    FU --> BRONZE_HTML
+
+    BASE_T --> T_NEOWS & T_DONKI & T_EONET & T_APOD & T_SFN & T_HTML
+    T_NEOWS & T_DONKI & T_EONET & T_APOD & T_SFN & T_HTML --> REGISTRY
+    MODELS --> DATABASE
+    DATABASE --> ENGINE
+    REGISTRY --> ENGINE
+    BRONZE_STR --> ENGINE
+    BRONZE_HTML --> ENGINE
+    ENGINE -->|"session.merge() per record"| DB
+
+    DB -->|"fetch_knowledge_documents()"| BUILDER
+    BUILDER -->|"chunk + embed<br/>all-MiniLM-L6-v2"| QDRANT

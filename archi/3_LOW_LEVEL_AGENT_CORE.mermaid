@@ -1,0 +1,64 @@
+flowchart TD
+    DB[("unified_layer.db")]
+    QDRANT[("Qdrant")]
+
+    subgraph REPO["agent/app/core/repository"]
+        BASE_R["base.py<br/>BaseRepository — session mgmt, dict conversion"]
+        R_AST["asteroid_repository.py"]
+        R_WEA["weather_repository.py"]
+        R_EAR["earth_repository.py"]
+        R_APO["apod_repository.py"]
+        R_NEW["news_repository.py"]
+        R_KNO["knowledge_repository.py<br/>Qdrant search, no SQL session"]
+    end
+
+    subgraph TOOLS["agent/app/core/tools"]
+        TL_AST["asteroid_tools.py"]
+        TL_WEA["weather_tools.py"]
+        TL_EAR["earth_tools.py"]
+        TL_APO["apod_tools.py"]
+        TL_NEW["news_tools.py"]
+        TL_KNO["knowledge_tools.py"]
+    end
+
+    subgraph ASSIST["agent/app/core/assistant"]
+        ASSISTANT["assistant.py<br/>AssistantBase — Ollama/Groq switch"]
+    end
+
+    subgraph GRAPH["agent/app/core/graph + agents"]
+        STATE["graph_state.py<br/>GraphState (7 layers)"]
+        FACTORY["agent_node_factory.py<br/>make_agent_node()"]
+        SUPERVISOR["supervisor.py<br/>routes to agents, loops until DONE"]
+        ANALYTICS["analytics_agent.py<br/>pure-python stats, no LLM"]
+        AUDITOR["auditor_agent.py<br/>error retry gate"]
+        REPORT["report_agent.py<br/>final markdown synthesis"]
+        BUILDER["graph_builder.py<br/>build_graph() — wires every node"]
+    end
+
+    DB --> BASE_R
+    BASE_R --> R_AST & R_WEA & R_EAR & R_APO & R_NEW
+    QDRANT --> R_KNO
+
+    R_AST --> TL_AST
+    R_WEA --> TL_WEA
+    R_EAR --> TL_EAR
+    R_APO --> TL_APO
+    R_NEW --> TL_NEW
+    R_KNO --> TL_NEW
+    R_KNO --> TL_KNO
+
+    ASSISTANT --> FACTORY
+    TL_AST & TL_WEA & TL_EAR & TL_APO & TL_NEW & TL_KNO --> FACTORY
+    STATE --> FACTORY
+    STATE --> SUPERVISOR
+    STATE --> ANALYTICS
+    STATE --> AUDITOR
+    STATE --> REPORT
+
+    FACTORY --> BUILDER
+    SUPERVISOR --> BUILDER
+    ANALYTICS --> BUILDER
+    AUDITOR --> BUILDER
+    REPORT --> BUILDER
+    ASSISTANT --> SUPERVISOR
+    ASSISTANT --> REPORT

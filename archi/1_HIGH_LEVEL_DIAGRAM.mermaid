@@ -1,0 +1,42 @@
+flowchart TD
+    NASA["NASA APIs<br/>NeoWs · DONKI · EONET · APOD"]
+    SFN["Spaceflight News API"]
+    DOCS["NASA HTML pages<br/>JWST · Artemis · Hubble · Mars · Earth Obs"]
+
+    subgraph PHASE_A["PHASE A — Ingestion (Bronze layer)"]
+        BRONZE["Raw JSON / HTML saved to disk<br/>data_setup/data_str, data_unstr"]
+    end
+
+    subgraph PHASE_B["PHASE B — Unification (Silver layer)"]
+        SILVER["unified_events + unified_knowledge<br/>SQLite / PostgreSQL"]
+    end
+
+    subgraph PHASE_C["PHASE C — Vectorization"]
+        VECTOR["Chunked + embedded knowledge<br/>Qdrant vector DB"]
+    end
+
+    subgraph PHASE_D["PHASE D — Agent runtime (LangGraph, per query)"]
+        SUPERVISOR["Supervisor<br/>decides which agents run"]
+        SPECIALISTS["Specialist agents<br/>NEO · Weather · Earth · APOD · News · Knowledge"]
+        ANALYTICS["Analytics agent"]
+        REPORT["Report agent<br/>final synthesis"]
+    end
+
+    subgraph PHASE_E["PHASE E — Serving"]
+        API["FastAPI backend<br/>/query endpoint"]
+        UI["Next.js frontend"]
+    end
+
+    NASA --> BRONZE
+    SFN --> BRONZE
+    DOCS --> BRONZE
+    BRONZE --> SILVER
+    SILVER --> VECTOR
+
+    UI --> API --> SUPERVISOR
+    SUPERVISOR --> SPECIALISTS
+    SPECIALISTS --> SUPERVISOR
+    SPECIALISTS -. reads .-> SILVER
+    SPECIALISTS -. reads .-> VECTOR
+    SUPERVISOR --> ANALYTICS --> SUPERVISOR
+    SUPERVISOR --> REPORT --> API --> UI

@@ -1,0 +1,34 @@
+sequenceDiagram
+    participant UI as Next.js UI
+    participant API as FastAPI /query
+    participant G as Compiled LangGraph
+    participant SUP as supervisor.py
+    participant AG as Specialist agent(s)
+    participant TOOL as Tool + Repository
+    participant ANA as analytics_agent.py
+    participant REP as report_agent.py
+
+    UI->>API: POST /query {query, thread_id}
+    API->>G: graph.invoke(state, config)
+    G->>SUP: START -> supervisor_node(state)
+    SUP->>SUP: build_context() from completed_agents
+    SUP->>SUP: LLM decides next agent(s) or DONE
+
+    alt agents selected
+        SUP->>AG: Command(goto=[agents], cycle_count+1)
+        AG->>TOOL: assistant tool-calling loop (max 4 iters)
+        TOOL-->>AG: content + artifact
+        AG->>SUP: Command(goto="supervisor", update=domain_data)
+        SUP->>SUP: loop again (up to MAX_CYCLES=3)
+    end
+
+    opt user asked for trends/stats
+        SUP->>ANA: Command(goto="analytics_agent")
+        ANA->>SUP: Command(goto="supervisor", update=analytics+charts)
+    end
+
+    SUP->>REP: decision=="DONE" -> Command(goto="report_agent")
+    REP->>REP: LLM synthesizes final markdown from full state
+    REP->>G: Command(goto=END, update=final_answer+report)
+    G->>API: result dict
+    API->>UI: QueryResponse (final_answer, report, errors, completed_agents, execution_logs)
