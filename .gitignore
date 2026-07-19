@@ -172,5 +172,6 @@ data_unstr/
 unified_layer.db
 checkpoints.db-shm
 checkpoints.db-wal
-checkpoints.db
 /docs/
+system_doc.txt
+checkpoints.db
