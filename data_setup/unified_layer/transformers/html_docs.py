@@ -55,7 +55,7 @@ class HtmlDocsTransformer(BaseTransformer):
         dataset_id = parts[-2] if len(parts) >= 2 else "html_doc"
 
         # Unique ID generated via combination of the file identifier and dataset metadata
-        record_id = f"{dataset_id}_{file_path.stem}"
+        record_id = f"{dataset_id}_latest"
 
         record = UnifiedKnowledge(
             id=record_id,

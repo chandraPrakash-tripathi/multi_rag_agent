@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -60,10 +62,10 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black text-slate-100 flex flex-col items-center px-4 py-12">
+    <main className="min-h-screen bg-gradient-to-b from-[#04050d] via-[#0a0e1f] to-black text-slate-100 flex flex-col items-center px-4 py-16">
       <div className="w-full max-w-2xl space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-4xl font-semibold tracking-tight bg-gradient-to-r from-cyan-300 via-indigo-200 to-purple-300 bg-clip-text text-transparent">
             Space Intelligence Platform
           </h1>
           <p className="text-sm text-slate-400">
@@ -71,18 +73,18 @@ export default function Home() {
           </p>
         </div>
 
-        <Card className="bg-slate-900/60 border-slate-800">
+        <Card className="bg-slate-900/60 border-slate-800 backdrop-blur">
           <CardContent className="pt-6 space-y-4">
             <Textarea
               placeholder="e.g. Are there any hazardous asteroids approaching this week?"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="bg-slate-950/50 border-slate-700 min-h-24"
+              className="bg-slate-950/70 border-slate-700 min-h-24 text-slate-100 placeholder:text-slate-500 focus-visible:ring-cyan-500/40"
             />
             <Button
               onClick={handleSubmit}
               disabled={loading || !query.trim()}
-              className="w-full"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40"
             >
               {loading ? "Consulting the cosmos…" : "Ask"}
             </Button>
@@ -113,13 +115,21 @@ export default function Home() {
         {result && (
           <Card className="bg-slate-900/60 border-slate-800">
             <CardHeader>
-              <CardTitle className="text-lg">Report</CardTitle>
+              <CardTitle className="text-lg text-slate-100">Report</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <ScrollArea className="max-h-[500px] pr-4">
-                <div className="whitespace-pre-wrap text-sm text-slate-200 leading-relaxed">
-                  {result.report || result.final_answer}
-                </div>
+                <article
+                  className="prose prose-invert prose-sm max-w-none
+                    prose-headings:text-slate-100 prose-headings:font-semibold
+                    prose-p:text-slate-300 prose-li:text-slate-300
+                    prose-strong:text-slate-100
+                    prose-a:text-cyan-400"
+                >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {result.report || result.final_answer}
+                  </ReactMarkdown>
+                </article>
               </ScrollArea>
 
               {result.errors.length > 0 && (
