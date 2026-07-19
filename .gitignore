@@ -169,9 +169,9 @@ qdrant_storage
 
 data_str/
 data_unstr/
+checkpoints.db
 unified_layer.db
 checkpoints.db-shm
 checkpoints.db-wal
 /docs/
 system_doc.txt
-checkpoints.db

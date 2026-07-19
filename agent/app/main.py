@@ -10,9 +10,15 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from agent.app.core.graph.graph_builder import build_graph
 
+print(f"[DEBUG] LANGSMITH_TRACING={os.getenv('LANGSMITH_TRACING')}")
+print(f"[DEBUG] LANGSMITH_PROJECT={os.getenv('LANGSMITH_PROJECT')}")
+print(f"[DEBUG] LANGSMITH_API_KEY set: {bool(os.getenv('LANGSMITH_API_KEY'))}")
 API_KEY = os.getenv("API_KEY")
 
 _checkpointer_cm = None

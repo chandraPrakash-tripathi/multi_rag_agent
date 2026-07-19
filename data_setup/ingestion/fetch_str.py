@@ -2,6 +2,7 @@ import argparse
 import json
 from datetime import datetime
 from pathlib import Path
+from datetime import datetime, timedelta
 
 import requests
 
@@ -77,6 +78,16 @@ def fetch_dataset(dataset: dict):
         params["api_key"] = settings.NASA_API_KEY
 
     params.update(dataset.get("params", {}))
+
+    # NeoWs config hardcodes a stale date range (datasets_str.json has
+    # start_date/end_date fixed at 2026-07-11 from initial setup) — always
+    # override with a live window ending 7 days from today, regardless of
+    # what's sitting in the JSON. This makes the fetch self-healing on every
+    # run instead of relying on someone remembering to edit the config.
+    if dataset["id"] == "neows":
+        today = datetime.now().date()
+        params["start_date"] = today.isoformat()
+        params["end_date"] = (today + timedelta(days=7)).isoformat()
 
     print("URL :", dataset["url"])
     print("Params :", params)
