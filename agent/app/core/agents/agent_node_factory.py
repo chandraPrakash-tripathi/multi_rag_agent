@@ -14,7 +14,7 @@ logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 logger.debug(f"agent_node_factory.py LOADED FROM: {__file__}")
 
-MAX_TOOL_ITERATIONS = 4
+MAX_TOOL_ITERATIONS = int(os.getenv("MAX_TOOL_ITERATIONS", "4"))
 
 
 def make_agent_node(
@@ -44,6 +44,9 @@ def make_agent_node(
         ]
         collected_artifacts = []
 
+        # Fix 7: Track if loop exits cleanly or hits the cap
+        loop_capped = True
+
         for _ in range(MAX_TOOL_ITERATIONS):
             result = assistant({"messages": local_messages})
             ai_message = result["messages"][0]
@@ -53,6 +56,7 @@ def make_agent_node(
             logger.debug(f"[{name}] ai_message.tool_calls: {tool_calls}")
 
             if not tool_calls:
+                loop_capped = False  # The LLM decided it has everything it needs!
                 break
 
             for call in tool_calls:
@@ -86,6 +90,15 @@ def make_agent_node(
                     collected_artifacts.append(artifact)
 
         update = {"messages": [local_messages[-1]], "completed_agents": [name]}
+
+        # Fix 7: If the loop maxed out, add an explicit error signal
+        if loop_capped:
+            err_msg = f"Agent '{name}' hit max tool iterations ({MAX_TOOL_ITERATIONS}) without finishing."
+            logger.warning(err_msg)
+            # Assuming state.errors and state.execution_logs are list reducers
+            update["errors"] = [err_msg]
+            update["execution_logs"] = [err_msg]
+
         if state_key is not None:
             if merge:
                 update[state_key] = merge(collected_artifacts)

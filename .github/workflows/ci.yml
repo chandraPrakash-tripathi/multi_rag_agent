@@ -1,0 +1,53 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    # Spin up an ephemeral Qdrant container for the knowledge_repository to talk to
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Assumes you have a requirements.txt. If you use Poetry, adjust accordingly.
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Unified Layer Tests
+        env:
+          # Set safe dummy keys for tests so the LLM clients don't crash on init
+          OPENAI_API_KEY: "dummy_key_for_ci"
+          GROQ_API_KEY: "dummy_key_for_ci"
+          QDRANT_URL: "http://localhost:6333"
+          LOG_LEVEL: "INFO"
+        run: |
+          python scripts/test_unified_layer.py
+
+      - name: Run Agent Smoke Tests
+        env:
+          OPENAI_API_KEY: "dummy_key_for_ci"
+          GROQ_API_KEY: "dummy_key_for_ci"
+          QDRANT_URL: "http://localhost:6333"
+          LOG_LEVEL: "INFO"
+        run: |
+          python scripts/smoke_test_agents.py

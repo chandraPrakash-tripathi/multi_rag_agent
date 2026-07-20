@@ -1,8 +1,15 @@
+import os
+import logging
 from typing import List, Optional
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
-import os
+
+logger = logging.getLogger(__name__)
+logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
+
+# Fix 6: Environment-driven vector threshold
+VECTOR_SEARCH_THRESHOLD = float(os.getenv("VECTOR_SEARCH_THRESHOLD", "0.3"))
 
 
 class KnowledgeRepository:
@@ -21,8 +28,6 @@ class KnowledgeRepository:
             KnowledgeRepository._embedding_model = SentenceTransformer(
                 "all-MiniLM-L6-v2"
             )
-
-    # repositories/knowledge_repository.py — updated _search method
 
     def _search(
         self, query: str, limit: int, dataset_filter=None, exclude_datasets=None
@@ -55,9 +60,10 @@ class KnowledgeRepository:
             query=query_vector,  # note: 'query', not 'query_vector' — different param name
             query_filter=qdrant_filter,
             limit=limit,
+            score_threshold=VECTOR_SEARCH_THRESHOLD,  # <-- Fix 6: enforce relevance threshold
         )
 
-        return [
+        results = [
             {
                 "text": point.payload.get("page_content"),
                 "title": point.payload.get("title"),
@@ -67,6 +73,14 @@ class KnowledgeRepository:
             }
             for point in response.points  # query_points wraps results in a .points list
         ]
+
+        # Fix 6: Log when no results meet the threshold
+        if not results:
+            logger.warning(
+                f"Vector search for '{query}' returned 0 results (threshold: {VECTOR_SEARCH_THRESHOLD})."
+            )
+
+        return results
 
     def search_scientific_knowledge(self, query: str, limit: int = 3) -> List[dict]:
         # Excludes news and (optionally) apod so science queries don't get diluted by unrelated chunks
