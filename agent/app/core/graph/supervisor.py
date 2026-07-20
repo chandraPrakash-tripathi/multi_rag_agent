@@ -1,6 +1,7 @@
 import os
 import logging
 from typing import Literal
+from pydantic import BaseModel, Field
 from langgraph.types import Command
 from langchain_core.messages import SystemMessage
 from agent.app.core.graph.graph_state import GraphState
@@ -19,11 +20,30 @@ AVAILABLE_AGENTS = {
     "analytics_agent": "Analytics Agent - trends/statistics on data already gathered. Only valid after at least one data-gathering agent has completed.",
 }
 
-# Lowered from 6 -> 3 for now while iterating on prompt behavior. Each cycle
-# can take 60-240s on local Ollama with multiple agents, so a full 6-cycle
-# run during debugging is painfully slow. Raise back to 6 once redundant
-# re-selection is confirmed fixed and you're doing a real end-to-end test.
-MAX_CYCLES = 3
+# Fix 5: Environment-driven MAX_CYCLES (defaults to 3 if not set)
+MAX_CYCLES = int(os.getenv("SUPERVISOR_MAX_CYCLES", "3"))
+
+
+# Fix 2: Structured Output Schema
+class SupervisorDecision(BaseModel):
+    done: bool = Field(
+        description="Set to true if all relevant data-gathering agents have run and we are ready to synthesize."
+    )
+    agents: list[
+        Literal[
+            "neo_agent",
+            "weather_agent",
+            "earth_agent",
+            "apod_agent",
+            "knowledge_agent",
+            "news_agent",
+            "analytics_agent",
+        ]
+    ] = Field(
+        default_factory=list,
+        description="List of agents to route to next. Leave empty if done is true.",
+    )
+
 
 _SYSTEM_PROMPT = (
     "You are the supervisor of a space intelligence multi-agent system.\n"
@@ -41,19 +61,16 @@ _SYSTEM_PROMPT = (
     "want more data — zero is a valid answer.\n"
     "- As soon as every data-gathering agent relevant to the user's query "
     "has been run at least once — regardless of whether each one found "
-    "data or not — respond DONE. Finding zero results is a valid, final "
+    "data or not — mark 'done' as true. Finding zero results is a valid, final "
     "answer. Do not keep querying an agent hoping for a different result.\n"
     "- analytics_agent only runs after at least one data-gathering agent "
     "has already completed with results.\n"
-    "- Only select agents relevant to the user's query in the first place.\n\n"
-    "Respond with a comma-separated list of agent names to run next, or "
-    "respond with exactly: DONE\n"
-    "Nothing else — no explanation, no punctuation around the words."
+    "- Only select agents relevant to the user's query in the first place."
 )
 
-# No tools needed for a routing decision — reuse AssistantBase purely for its
-# environment-aware LLM initialization (local Ollama vs prod Groq), not its tool loop.
 _supervisor_llm = AssistantBase(system_prompt=_SYSTEM_PROMPT, temperature=0.0).llm
+# Bind the structured output schema to the LLM
+_structured_supervisor = _supervisor_llm.with_structured_output(SupervisorDecision)
 
 
 def _agent_status_line(agent_name: str, label: str, completed: list, count: int) -> str:
@@ -102,37 +119,37 @@ def supervisor_node(state: GraphState) -> Command[
 
     context = _build_context(state)
 
-    response = _supervisor_llm.invoke(
+    # Invoke with structured output
+    decision: SupervisorDecision = _structured_supervisor.invoke(
         [
             SystemMessage(content=_SYSTEM_PROMPT),
             SystemMessage(content=context),
         ]
     )
-    decision = (response.content or "").strip()
 
     logger.debug(f"Supervisor context sent:\n{context}\n")
-    logger.debug(f"Supervisor raw decision: {decision!r}")
+    logger.debug(f"Supervisor structured decision: {decision.model_dump()}")
 
-    log_entry = f"Supervisor cycle {state.cycle_count}: '{decision}'"
+    log_entry = f"Supervisor cycle {state.cycle_count}: {decision.model_dump()}"
 
-    if decision.upper() == "DONE":
+    if decision.done:
         return Command(goto="auditor_agent", update={"execution_logs": [log_entry]})
 
-    next_agents = [
-        a.strip() for a in decision.split(",") if a.strip() in AVAILABLE_AGENTS
-    ]
+    next_agents = decision.agents
 
     if not next_agents:
-        # Unparseable response — fail safe to auditor rather than loop on garbage output.
+        # Failsafe: Model returned done=False but no agents.
         return Command(
             goto="auditor_agent",
             update={
-                "execution_logs": [log_entry + " (unparseable — routing to auditor)"]
+                "execution_logs": [
+                    log_entry + " (no agents provided — routing to auditor)"
+                ]
             },
         )
 
     return Command(
-        goto=next_agents,  # multiple node names -> LangGraph schedules them in the same superstep (parallel)
+        goto=next_agents,
         update={
             "required_agents": next_agents,
             "execution_logs": [log_entry],

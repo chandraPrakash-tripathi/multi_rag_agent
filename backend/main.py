@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -33,11 +33,11 @@ _graph = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _checkpointer_cm, _graph
-    _checkpointer_cm = SqliteSaver.from_conn_string("checkpoints.db")
-    checkpointer = _checkpointer_cm.__enter__()
+    _checkpointer_cm = AsyncSqliteSaver.from_conn_string("checkpoints.db")
+    checkpointer = await _checkpointer_cm.__aenter__()
     _graph = build_graph(checkpointer)
     yield
-    _checkpointer_cm.__exit__(None, None, None)
+    await _checkpointer_cm.__aexit__(None, None, None)
 
 
 limiter = Limiter(key_func=get_remote_address)
@@ -74,7 +74,7 @@ class QueryResponse(BaseModel):
 
 @app.post("/query", response_model=QueryResponse)
 @limiter.limit("10/minute")
-def run_query(request: Request, body: QueryRequest):
+async def run_query(request: Request, body: QueryRequest):
     verify_api_key(request.headers.get("x-api-key"))
 
     if not body.query.strip():
@@ -84,7 +84,8 @@ def run_query(request: Request, body: QueryRequest):
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
-        result = _graph.invoke(
+        # Changed to async invocation to handle concurrent FastAPI requests safely
+        result = await _graph.ainvoke(
             {"user_query": body.query, "messages": [HumanMessage(content=body.query)]},
             config=config,
         )
