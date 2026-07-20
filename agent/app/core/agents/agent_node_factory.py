@@ -1,14 +1,19 @@
+import os
+import time
+import logging
 from typing import Callable, Literal, Optional
 from langgraph.types import Command
-from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.messages import HumanMessage, ToolMessage, SystemMessage
+from datetime import date
+
 from agent.app.core.assistant.assistant import AssistantBase
 from agent.app.core.graph.graph_state import GraphState
-from datetime import date
-import time
-from langchain_core.messages import SystemMessage
 
-# agent_node_factory.py — add these two lines at the very top, right after the imports
-print(f"[DEBUG] agent_node_factory.py LOADED FROM: {__file__}")
+logger = logging.getLogger(__name__)
+logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
+
+logger.debug(f"agent_node_factory.py LOADED FROM: {__file__}")
+
 MAX_TOOL_ITERATIONS = 4
 
 
@@ -28,7 +33,8 @@ def make_agent_node(
 
     def node(state: GraphState) -> Command[Literal["supervisor"]]:
         start_time = time.time()
-        print(f"[TIMING {name}] started at {start_time:.3f}")
+        logger.debug(f"[TIMING {name}] started at {start_time:.3f}")
+
         today_str = date.today().isoformat()
         local_messages = [
             SystemMessage(
@@ -44,13 +50,17 @@ def make_agent_node(
             local_messages.append(ai_message)
 
             tool_calls = getattr(ai_message, "tool_calls", None)
-            print(f"[DEBUG {name}] ai_message.tool_calls: {tool_calls}")  # <-- add this
+            logger.debug(f"[{name}] ai_message.tool_calls: {tool_calls}")
+
             if not tool_calls:
                 break
 
             for call in tool_calls:
                 tool_fn = tool_map.get(call["name"])
                 if tool_fn is None:
+                    logger.warning(
+                        f"[{name}] Unknown tool requested and skipped: {call['name']}"
+                    )
                     continue  # unknown tool requested — skip rather than crash the node
 
                 try:
@@ -65,9 +75,10 @@ def make_agent_node(
                         content=f"Tool '{call['name']}' failed: {exc}",
                         tool_call_id=call["id"],
                     )
-                print(
-                    f"[DEBUG {name}] tool_message.content: {tool_message.content[:200]}, artifact: {getattr(tool_message, 'artifact', 'NO ARTIFACT ATTR')}"
-                )  # <-- add this  # <-- add this
+
+                logger.debug(
+                    f"[{name}] tool_message.content: {tool_message.content[:200]}, artifact: {getattr(tool_message, 'artifact', 'NO ARTIFACT ATTR')}"
+                )
 
                 local_messages.append(tool_message)
                 artifact = getattr(tool_message, "artifact", None)
@@ -82,7 +93,7 @@ def make_agent_node(
                 flat = [item for artifact in collected_artifacts for item in artifact]
                 update[state_key] = flat
 
-        print(
+        logger.debug(
             f"[TIMING {name}] finished at {time.time():.3f} (took {time.time()-start_time:.2f}s)"
         )
         return Command(goto="supervisor", update=update)

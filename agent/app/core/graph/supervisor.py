@@ -1,8 +1,13 @@
+import os
+import logging
 from typing import Literal
 from langgraph.types import Command
 from langchain_core.messages import SystemMessage
 from agent.app.core.graph.graph_state import GraphState
 from ..assistant.assistant import AssistantBase
+
+logger = logging.getLogger(__name__)
+logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 AVAILABLE_AGENTS = {
     "neo_agent": "Near-Earth Object Agent - hazardous asteroid monitoring, closest approaches",
@@ -81,15 +86,16 @@ def supervisor_node(state: GraphState) -> Command[
         "knowledge_agent",
         "news_agent",
         "analytics_agent",
+        "auditor_agent",
         "report_agent",
     ]
 ]:
     if state.cycle_count >= MAX_CYCLES:
         return Command(
-            goto="report_agent",
+            goto="auditor_agent",
             update={
                 "execution_logs": [
-                    f"Max cycles ({MAX_CYCLES}) reached — forcing synthesis."
+                    f"Max cycles ({MAX_CYCLES}) reached — routing to auditor for safety check."
                 ]
             },
         )
@@ -103,23 +109,25 @@ def supervisor_node(state: GraphState) -> Command[
         ]
     )
     decision = (response.content or "").strip()
-    print(f"[DEBUG] Supervisor context sent:\n{context}\n")
-    print(f"[DEBUG] Supervisor raw decision: {decision!r}")
+
+    logger.debug(f"Supervisor context sent:\n{context}\n")
+    logger.debug(f"Supervisor raw decision: {decision!r}")
+
     log_entry = f"Supervisor cycle {state.cycle_count}: '{decision}'"
 
     if decision.upper() == "DONE":
-        return Command(goto="report_agent", update={"execution_logs": [log_entry]})
+        return Command(goto="auditor_agent", update={"execution_logs": [log_entry]})
 
     next_agents = [
         a.strip() for a in decision.split(",") if a.strip() in AVAILABLE_AGENTS
     ]
 
     if not next_agents:
-        # Unparseable response — fail safe to synthesis rather than loop on garbage output.
+        # Unparseable response — fail safe to auditor rather than loop on garbage output.
         return Command(
-            goto="report_agent",
+            goto="auditor_agent",
             update={
-                "execution_logs": [log_entry + " (unparseable — routing to report)"]
+                "execution_logs": [log_entry + " (unparseable — routing to auditor)"]
             },
         )
 

@@ -1,6 +1,7 @@
 import os
 import time
 import uuid
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,11 +15,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Setup logging
+logger = logging.getLogger(__name__)
+logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
+
 from agent.app.core.graph.graph_builder import build_graph
 
-print(f"[DEBUG] LANGSMITH_TRACING={os.getenv('LANGSMITH_TRACING')}")
-print(f"[DEBUG] LANGSMITH_PROJECT={os.getenv('LANGSMITH_PROJECT')}")
-print(f"[DEBUG] LANGSMITH_API_KEY set: {bool(os.getenv('LANGSMITH_API_KEY'))}")
+logger.debug(f"LANGSMITH_TRACING={os.getenv('LANGSMITH_TRACING')}")
+logger.debug(f"LANGSMITH_PROJECT={os.getenv('LANGSMITH_PROJECT')}")
+logger.debug(f"LANGSMITH_API_KEY set: {bool(os.getenv('LANGSMITH_API_KEY'))}")
 API_KEY = os.getenv("API_KEY")
 
 _checkpointer_cm = None
