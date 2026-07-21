@@ -175,3 +175,4 @@ checkpoints.db-shm
 checkpoints.db-wal
 /docs/
 system_doc.txt
+api_key.txt
