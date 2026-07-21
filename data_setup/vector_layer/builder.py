@@ -22,9 +22,10 @@ class VectorKnowledgeBuilder:
         self.engine = create_engine(self.sqlite_url)
         self.Session = sessionmaker(bind=self.engine)
 
-        # 2. Vector Database Connection (Qdrant on Docker)
+        # 2. Vector Database Connection (Qdrant on Docker locally, Qdrant Cloud in prod)
         self.qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
-        self.qdrant = QdrantClient(url=self.qdrant_url)
+        self.qdrant_api_key = os.getenv("QDRANT_API_KEY")  # None for local Docker
+        self.qdrant = QdrantClient(url=self.qdrant_url, api_key=self.qdrant_api_key)
         self.collection_name = "unified_knowledge_collection"
 
         # 3. Embedding Model Initialization

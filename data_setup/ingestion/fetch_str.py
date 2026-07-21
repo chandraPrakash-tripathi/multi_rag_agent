@@ -73,7 +73,9 @@ def fetch_dataset(dataset: dict):
 
     params = {}
 
-    if dataset.get("api_key", False):
+    if dataset.get(
+        "api_key", False
+    ):  ##checks dict named datasets to see if api key is there (.get for dict)
 
         params["api_key"] = settings.NASA_API_KEY
 

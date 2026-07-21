@@ -44,3 +44,21 @@ class UnifiedKnowledge(Base):
     source_url = Column(String, nullable=True)
     processed_at = Column(DateTime, default=datetime.utcnow)
     published_at = Column(DateTime, nullable=True, index=True)
+
+
+class DatasetFreshness(Base):
+    """Tracks the last successful/failed ingestion run per dataset_id.
+
+    One row per dataset_id, upserted after every pipeline run. This is what
+    lets you answer "is anything silently stale?" with a query instead of
+    grepping GitHub Actions logs.
+    """
+
+    __tablename__ = "dataset_freshness"
+
+    dataset_id = Column(String, primary_key=True)  # e.g. 'neows', 'jwst'
+    source_provider = Column(String, nullable=False)
+    last_ingested_at = Column(DateTime, nullable=False)
+    last_status = Column(String, nullable=False)  # 'success' | 'failed'
+    records_processed = Column(JSON, nullable=True)  # int, but JSON keeps it flexible
+    last_error = Column(Text, nullable=True)

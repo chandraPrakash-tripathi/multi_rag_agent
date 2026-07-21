@@ -1,0 +1,35 @@
+name: Ingest Structured Data
+
+on:
+  schedule:
+    # Every 6 hours. Adjust to match how often NeoWS/DONKI/EONET actually change.
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}  # lets you trigger a manual run from the Actions tab
+
+jobs:
+  fetch-and-unify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Run structured ingestion (fetch -> unify)
+        env:
+          NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: poetry run python -m scripts.run_ingestion_pipeline --stage structured
+
+      - name: Freshness report
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: poetry run python -m scripts.check_freshness
+        continue-on-error: true  # surface staleness in logs without failing the whole run
