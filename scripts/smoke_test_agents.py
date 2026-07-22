@@ -31,6 +31,12 @@ TESTS = [
     ),
     ("news_agent", build_news_node(), "What's the latest space news?", "space_news"),
     (
+        "news_agent",
+        build_news_node(),
+        "What's the current weather forecast in Bengaluru?",  # deliberately outside NASA/space-news coverage
+        "space_news",
+    ),
+    (
         "knowledge_agent",
         build_knowledge_node(),
         "Explain how black holes form.",
