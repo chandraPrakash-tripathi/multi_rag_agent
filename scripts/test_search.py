@@ -1,20 +1,40 @@
+"""
+Standalone debug script for the web search fallback tool.
+Run with: poetry run python scripts/test_web_search_tool.py
+
+This avoids PowerShell's unreliable multi-line `python -c "..."` quoting,
+and explicitly loads .env (web_search_tools.py itself does NOT call
+load_dotenv() — it just reads os.environ, so whatever process runs it
+needs to have already loaded the .env file, same as test_search.py does).
+"""
+
 import os
-import serpapi
+import sys
+import traceback
+
 from dotenv import load_dotenv
 
-# This finds your .env file and loads its variables into Python's os environment
 load_dotenv()
 
-# Now os.getenv will successfully find the key
-client = serpapi.Client(api_key=os.getenv("SERPAPI_KEY"))
-
-# Run the search
-results = client.search(
-    {"engine": "google", "q": "Python programming tutorials", "num": 5}
+print(
+    "SERPAPI_KEY loaded:",
+    "yes" if os.getenv("SERPAPI_KEY") else "NO (missing from .env or env)",
 )
+print("Python:", sys.version)
+print("CWD:", os.getcwd())
+print("-" * 60)
 
-# Parse the JSON response
-for i, result in enumerate(results.get("organic_results", []), 1):
-    title = result.get("title")
-    link = result.get("link")
-    print(f"{i}. {title}\n   {link}\n")
+try:
+    from agent.app.core.tools.web_search_tools import web_search_fallback
+
+    print("Import OK. Tool name:", web_search_fallback.name)
+
+    content, artifact = web_search_fallback.func("Python programming tutorials")
+    print("-" * 60)
+    print("CONTENT:\n", content)
+    print("-" * 60)
+    print("ARTIFACT:\n", artifact)
+
+except Exception:
+    print("FAILED — full traceback below:")
+    traceback.print_exc()
