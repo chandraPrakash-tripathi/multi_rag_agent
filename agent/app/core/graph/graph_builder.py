@@ -18,6 +18,7 @@ from agent.app.core.tools.earth_tools import get_active_earth_events
 from agent.app.core.tools.apod_tools import get_apod_by_date
 from agent.app.core.tools.news_tools import get_latest_space_news, search_news_archives
 from agent.app.core.tools.knowledge_tools import search_scientific_knowledge
+from agent.app.core.tools.web_search_tools import web_search_fallback
 
 
 def build_neo_node():
@@ -72,9 +73,20 @@ def build_apod_node():
 
 
 def build_news_node():
-    tools = [get_latest_space_news, search_news_archives]
+    tools = [
+        get_latest_space_news,
+        search_news_archives,
+        web_search_fallback,
+    ]  ## passed the new tool in dict and adjusted the system_prompt for it
     assistant = AssistantBase(
-        system_prompt="You cover space news. Use get_latest_space_news for recent headlines and search_news_archives for historical/topic-specific queries.",
+        system_prompt=(
+            "You cover space news. Use get_latest_space_news for recent headlines "
+            "and search_news_archives for historical/topic-specific queries. "
+            "Only call web_search_fallback if BOTH of those tools have already been "
+            "tried for this query and returned no relevant results, or if the query "
+            "is clearly outside NASA/spaceflight coverage. Never call web_search_fallback "
+            "first — it is a paid, slower last resort."
+        ),
         tools=tools,
     )
     return make_agent_node(
