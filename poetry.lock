@@ -6069,6 +6069,21 @@ files = [
 ]
 
 [[package]]
+name = "upstash-redis"
+version = "1.7.0"
+description = "Serverless Redis SDK from Upstash"
+optional = false
+python-versions = "<4.0,>=3.8"
+groups = ["main"]
+files = [
+    {file = "upstash_redis-1.7.0-py3-none-any.whl", hash = "sha256:6c17b4cd1f88bd0d34d978b9cf13041032482f7dfb4cdf8e00f6f6277db0006a"},
+    {file = "upstash_redis-1.7.0.tar.gz", hash = "sha256:19b46dff2d81b89da5cbfb23a38232f7ca3b9ba441b22a1df766c64972d936d1"},
+]
+
+[package.dependencies]
+httpx = ">=0.23.0,<1"
+
+[[package]]
 name = "uritemplate"
 version = "4.2.0"
 description = "Implementation of RFC 6570 URI Templates"
@@ -6890,4 +6905,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4.0"
-content-hash = "b62ac37a65cde51b3d79598ad8e5f83c64de0913d558c4e57004b4af580ef775"
+content-hash = "2265b8084434d446d74f416bf850e4d4ab5894f670f52fdd0857640dfba7d981"

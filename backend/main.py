@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 from agent.app.core.graph.graph_builder import build_graph
+from agent.app.core.cache.semantic_cache import SemanticCache
 
 logger.debug(f"LANGSMITH_TRACING={os.getenv('LANGSMITH_TRACING')}")
 logger.debug(f"LANGSMITH_PROJECT={os.getenv('LANGSMITH_PROJECT')}")
@@ -28,14 +29,16 @@ API_KEY = os.getenv("API_KEY")
 
 _checkpointer_cm = None
 _graph = None
+_semantic_cache = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _checkpointer_cm, _graph
+    global _checkpointer_cm, _graph, _semantic_cache
     _checkpointer_cm = AsyncSqliteSaver.from_conn_string("checkpoints.db")
     checkpointer = await _checkpointer_cm.__aenter__()
     _graph = build_graph(checkpointer)
+    _semantic_cache = SemanticCache()
     yield
     await _checkpointer_cm.__aexit__(None, None, None)
 
@@ -83,6 +86,20 @@ async def run_query(request: Request, body: QueryRequest):
     thread_id = body.thread_id or f"session_{int(time.time())}_{uuid.uuid4().hex}"
     config = {"configurable": {"thread_id": thread_id}}
 
+    cached = await _semantic_cache.get(body.query)
+    if cached:
+        return QueryResponse(
+            thread_id=thread_id,
+            final_answer=cached["final_answer"],
+            report=None,
+            errors=[],
+            completed_agents=[],
+            execution_logs=[
+                f"semantic_cache_hit (similarity={cached['similarity']:.3f}, "
+                f"matched_query='{cached['matched_query'][:80]}')"
+            ],
+        )
+
     try:
         # Changed to async invocation to handle concurrent FastAPI requests safely
         result = await _graph.ainvoke(
@@ -92,9 +109,12 @@ async def run_query(request: Request, body: QueryRequest):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Graph execution failed: {exc}")
 
+    final_answer = result.get("final_answer", "")
+    await _semantic_cache.set(body.query, final_answer)
+
     return QueryResponse(
         thread_id=thread_id,
-        final_answer=result.get("final_answer", ""),
+        final_answer=final_answer,
         report=result.get("report"),
         errors=result.get("errors", []),
         completed_agents=result.get("completed_agents", []),
